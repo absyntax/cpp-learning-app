@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Local database
+data/*.db
+
+# Environment files
+.env
+.env.*
+
+# Capacitor Android build output
+user/android/.gradle/
+user/android/build/
+user/android/app/build/
+user/android/.idea/
+user/android/local.properties
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
