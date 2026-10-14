@@ -6,78 +6,43 @@ type Chapter = {
     created_at: string;
 };
 
-type Lesson = {
-    id: number;
-    chapter_id: number;
-    title: string;
-};
-
 function ChapterForm() {
     const [title, setTitle] = useState("");
     const [chapters, setChapters] = useState<Chapter[]>([]);
-    const [lessons, setLessons] = useState<Lesson[]>([]);
-    const [editingChapterId, setEditingChapterId] = useState<number | null>(
-        null
-    );
+    const [showCreateCard, setShowCreateCard] = useState(false);
+    const [editingChapterId, setEditingChapterId] =
+    useState<number | null>(null);
+
+const [showEditCard, setShowEditCard] = useState(false);
 
     async function loadChapters() {
-        const chapterResponse = await fetch(
+        const response = await fetch(
             "http://localhost:3000/api/chapters"
         );
 
-        if (!chapterResponse.ok) {
+        if (!response.ok) {
             return;
         }
 
-        const chapterData: Chapter[] =
-            await chapterResponse.json();
-
-        setChapters(chapterData);
-
-        const lessonResponse = await fetch(
-            "http://localhost:3000/api/lessons"
-        );
-
-        if (!lessonResponse.ok) {
-            return;
-        }
-
-        const lessonData: Lesson[] =
-            await lessonResponse.json();
-
-        setLessons(lessonData);
+        const data: Chapter[] = await response.json();
+        setChapters(data);
     }
 
     useEffect(() => {
-    async function initializeData() {
-        const chapterResponse = await fetch(
+    async function initializeChapters() {
+        const response = await fetch(
             "http://localhost:3000/api/chapters"
         );
 
-        if (!chapterResponse.ok) {
+        if (!response.ok) {
             return;
         }
 
-        const chapterData: Chapter[] =
-            await chapterResponse.json();
-
-        setChapters(chapterData);
-
-        const lessonResponse = await fetch(
-            "http://localhost:3000/api/lessons"
-        );
-
-        if (!lessonResponse.ok) {
-            return;
-        }
-
-        const lessonData: Lesson[] =
-            await lessonResponse.json();
-
-        setLessons(lessonData);
+        const data: Chapter[] = await response.json();
+        setChapters(data);
     }
 
-    initializeData();
+    initializeChapters();
 }, []);
 
     async function handleSubmit(event: React.FormEvent) {
@@ -88,8 +53,29 @@ function ChapterForm() {
         }
 
         if (editingChapterId !== null) {
-            await handleUpdateChapter();
-            return;
+            const response = await fetch(
+                `http://localhost:3000/api/chapters/${editingChapterId}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        title: title.trim()
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                alert("Failed to update chapter.");
+                return;
+            }
+
+           setTitle("");
+setEditingChapterId(null);
+setShowEditCard(false);
+await loadChapters();
+return;
         }
 
         const response = await fetch(
@@ -111,50 +97,19 @@ function ChapterForm() {
         }
 
         setTitle("");
-
+        setShowCreateCard(false);
         await loadChapters();
     }
 
-    function handleEditChapter(chapter: Chapter) {
-        setEditingChapterId(chapter.id);
-        setTitle(chapter.title);
-    }
-
-    async function handleUpdateChapter() {
-        if (
-            editingChapterId === null ||
-            !title.trim()
-        ) {
-            return;
-        }
-
-        const response = await fetch(
-            `http://localhost:3000/api/chapters/${editingChapterId}`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    title: title.trim()
-                })
-            }
-        );
-
-        if (!response.ok) {
-            alert("Failed to update chapter.");
-            return;
-        }
-
-        setTitle("");
-        setEditingChapterId(null);
-
-        await loadChapters();
-    }
+   function handleEditChapter(chapter: Chapter) {
+    setEditingChapterId(chapter.id);
+    setTitle(chapter.title);
+    setShowEditCard(true);
+}
 
     function handleCancelEdit() {
-        setTitle("");
         setEditingChapterId(null);
+        setTitle("");
     }
 
     async function handleDeleteChapter(chapterId: number) {
@@ -177,116 +132,154 @@ function ChapterForm() {
         await loadChapters();
     }
 
-    async function handleDeleteLesson(lessonId: number) {
-        const response = await fetch(
-            `http://localhost:3000/api/lessons/${lessonId}`,
-            {
-                method: "DELETE"
-            }
-        );
-
-        if (!response.ok) {
-            alert("Failed to delete lesson.");
-            return;
-        }
-
-        await loadChapters();
-    }
-
     return (
-        <div>
-            <h2>
-                {editingChapterId !== null
-                    ? "Edit Chapter"
-                    : "Create Chapter"}
-            </h2>
+        <section>
+            <h2>Chapters</h2>
 
-            <form onSubmit={handleSubmit}>
+            <div>
+                {chapters.map((chapter) => (
+                    <div
+                        key={chapter.id}
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "12px",
+                            marginBottom: "8px",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "6px"
+                        }}
+                    >
+                        <strong>{chapter.title}</strong>
+
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    handleEditChapter(chapter)
+                                }
+                            >
+                                Edit
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    handleDeleteChapter(chapter.id)
+                                }
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div style={{ marginTop: "24px" }}>
+                <button
+                    type="button"
+                    onClick={() => setShowCreateCard(true)}
+                >
+                    + Create Chapter
+                </button>
+            </div>
+
+            {showCreateCard && (
+                <div
+                    style={{
+                        marginTop: "16px",
+                        padding: "24px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        background: "#f9fafb"
+                    }}
+                >
+                    <h3>Create Chapter</h3>
+
+                    <form onSubmit={handleSubmit}>
+                        <div>
+                            <label>
+                                Chapter title
+                            </label>
+
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(event) =>
+                                    setTitle(event.target.value)
+                                }
+                                placeholder="Enter chapter title"
+                            />
+                        </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowCreateCard(false);
+                                    setTitle("");
+                                }}
+                            >
+                                Cancel
+                            </button>
+
+                            <button type="submit">
+                                Create Chapter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+{showEditCard && (
+    <div
+        style={{
+            marginTop: "16px",
+            padding: "24px",
+            border: "1px solid #d1d5db",
+            borderRadius: "8px",
+            background: "#f9fafb"
+        }}
+    >
+        <h3>Edit Chapter</h3>
+
+        <form onSubmit={handleSubmit}>
+            <div>
+                <label>
+                    Chapter title
+                </label>
+
                 <input
                     type="text"
-                    placeholder="Chapter title"
                     value={title}
                     onChange={(event) =>
                         setTitle(event.target.value)
                     }
+                    placeholder="Enter chapter title"
                 />
+            </div>
 
-                <button type="submit">
-                    {editingChapterId !== null
-                        ? "Update Chapter"
-                        : "Create Chapter"}
+            <div style={{ marginTop: "16px" }}>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setShowEditCard(false);
+                        setEditingChapterId(null);
+                        setTitle("");
+                    }}
+                >
+                    Cancel
                 </button>
 
-                {editingChapterId !== null && (
-                    <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                    >
-                        Cancel
-                    </button>
-                )}
-            </form>
+                <button type="submit">
+                    Update Chapter
+                </button>
+            </div>
+        </form>
+    </div>
+)}
 
-            <h3>Chapters</h3>
-
-            <ul>
-                {chapters.map((chapter) => (
-                    <li key={chapter.id}>
-                        <strong>
-                            {chapter.title}
-                        </strong>
-
-                        <button
-                            type="button"
-                            onClick={() =>
-                                handleEditChapter(chapter)
-                            }
-                        >
-                            Edit
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() =>
-                                handleDeleteChapter(chapter.id)
-                            }
-                        >
-                            Delete
-                        </button>
-
-                        {lessons.some(
-                            (lesson) =>
-                                lesson.chapter_id === chapter.id
-                        ) && (
-                            <ul>
-                                {lessons
-                                    .filter(
-                                        (lesson) =>
-                                            lesson.chapter_id ===
-                                            chapter.id
-                                    )
-                                    .map((lesson) => (
-                                        <li key={lesson.id}>
-                                            {lesson.title}
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    handleDeleteLesson(
-                                                        lesson.id
-                                                    )
-                                                }
-                                            >
-                                                Delete
-                                            </button>
-                                        </li>
-                                    ))}
-                            </ul>
-                        )}
-                    </li>
-                ))}
-            </ul>
-        </div>
+        </section>
     );
 }
 

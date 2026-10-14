@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import LessonContentEditor from "./LessonContentEditor";
 
 type Chapter = {
     id: number;
@@ -16,39 +17,18 @@ function LessonForm() {
     const [chapters, setChapters] = useState<Chapter[]>([]);
     const [lessons, setLessons] = useState<Lesson[]>([]);
 
-    const [chapterId, setChapterId] = useState("");
-    const [title, setTitle] = useState("");
-    const [content, setContent] = useState("");
+    const [showForm, setShowForm] = useState(false);
+    const [formChapterId, setFormChapterId] =
+        useState<number | null>(null);
 
-    const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
-    const [successMessage, setSuccessMessage] = useState("");
+    const [editingLessonId, setEditingLessonId] =
+        useState<number | null>(null);
+
+    const [title, setTitle] = useState("");
+    const [contentLesson, setContentLesson] =
+    useState<Lesson | null>(null);
 
     async function loadData() {
-        const chapterResponse = await fetch(
-            "http://localhost:3000/api/chapters"
-        );
-
-        if (!chapterResponse.ok) {
-            return;
-        }
-
-        const chapterData: Chapter[] = await chapterResponse.json();
-        setChapters(chapterData);
-
-        const lessonResponse = await fetch(
-            "http://localhost:3000/api/lessons"
-        );
-
-        if (!lessonResponse.ok) {
-            return;
-        }
-
-        const lessonData: Lesson[] = await lessonResponse.json();
-        setLessons(lessonData);
-    }
-
-    useEffect(() => {
-    async function initializeData() {
         const chapterResponse = await fetch(
             "http://localhost:3000/api/chapters"
         );
@@ -76,59 +56,91 @@ function LessonForm() {
         setLessons(lessonData);
     }
 
-    initializeData();
-}, []);
-
-    function resetForm() {
-        setChapterId("");
-        setTitle("");
-        setContent("");
-        setEditingLessonId(null);
-    }
-
-    function handleEditLesson(lesson: Lesson) {
-        setEditingLessonId(lesson.id);
-        setChapterId(String(lesson.chapter_id));
-        setTitle(lesson.title);
-        setContent(lesson.content);
-        setSuccessMessage("");
-    }
-
-    async function handleSubmit(event: React.FormEvent) {
-        event.preventDefault();
-
-        if (!chapterId || !title.trim() || !content.trim()) {
-            return;
-        }
-
-        if (editingLessonId !== null) {
-            const response = await fetch(
-                `http://localhost:3000/api/lessons/${editingLessonId}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        chapter_id: Number(chapterId),
-                        title: title.trim(),
-                        content: content.trim()
-                    })
-                }
+    useEffect(() => {
+        async function initializeData() {
+            const chapterResponse = await fetch(
+                "http://localhost:3000/api/chapters"
             );
 
-            if (!response.ok) {
-                alert("Failed to update lesson.");
+            if (!chapterResponse.ok) {
                 return;
             }
 
-            resetForm();
-            setSuccessMessage("Lesson updated successfully.");
+            const chapterData: Chapter[] =
+                await chapterResponse.json();
 
-            await loadData();
-            return;
+            setChapters(chapterData);
+
+            const lessonResponse = await fetch(
+                "http://localhost:3000/api/lessons"
+            );
+
+            if (!lessonResponse.ok) {
+                return;
+            }
+
+            const lessonData: Lesson[] =
+                await lessonResponse.json();
+
+            setLessons(lessonData);
         }
 
+        initializeData();
+    }, []);
+
+    function openCreateForm(chapterId: number) {
+        setFormChapterId(chapterId);
+        setEditingLessonId(null);
+        setTitle("");
+        setShowForm(true);
+    }
+
+   function openEditForm(lesson: Lesson) {
+    setFormChapterId(lesson.chapter_id);
+    setEditingLessonId(lesson.id);
+    setTitle(lesson.title);
+    setShowForm(true);
+}
+
+    function closeForm() {
+        setShowForm(false);
+        setFormChapterId(null);
+        setEditingLessonId(null);
+        setTitle("");
+    }
+
+   async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!formChapterId || !title.trim()) {
+        return;
+    }
+
+    if (editingLessonId !== null) {
+        const lessonToUpdate = lessons.find(
+            (lesson) => lesson.id === editingLessonId
+        );
+
+        const response = await fetch(
+            `http://localhost:3000/api/lessons/${editingLessonId}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    chapter_id: formChapterId,
+                    title: title.trim(),
+                    content: lessonToUpdate?.content ?? ""
+                })
+            }
+        );
+
+        if (!response.ok) {
+            alert("Failed to update lesson.");
+            return;
+        }
+    } else {
         const response = await fetch(
             "http://localhost:3000/api/lessons",
             {
@@ -137,9 +149,9 @@ function LessonForm() {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    chapter_id: Number(chapterId),
+                    chapter_id: formChapterId,
                     title: title.trim(),
-                    content: content.trim()
+                    content: ""
                 })
             }
         );
@@ -148,12 +160,11 @@ function LessonForm() {
             alert("Failed to create lesson.");
             return;
         }
-
-        resetForm();
-        setSuccessMessage("Lesson created successfully.");
-
-        await loadData();
     }
+
+    closeForm();
+    await loadData();
+}
 
     async function handleDeleteLesson(lessonId: number) {
         const response = await fetch(
@@ -169,136 +180,193 @@ function LessonForm() {
         }
 
         if (editingLessonId === lessonId) {
-            resetForm();
+            closeForm();
         }
 
         await loadData();
     }
 
-    function handleCancelEdit() {
-        resetForm();
-        setSuccessMessage("");
-    }
+    if (contentLesson !== null) {
+    return (
+        <LessonContentEditor
+    lesson={contentLesson}
+    onBack={() => setContentLesson(null)}
+/>
+    );
+}
 
     return (
-        <div>
-            <h2>
-                {editingLessonId !== null
-                    ? "Edit Lesson"
-                    : "Create Lesson"}
-            </h2>
+        <section>
+            <h2>Lessons</h2>
 
-            {successMessage && (
-                <p>{successMessage}</p>
-            )}
+            {chapters.map((chapter) => {
+                const chapterLessons = lessons.filter(
+                    (lesson) =>
+                        lesson.chapter_id === chapter.id
+                );
 
-            <form onSubmit={handleSubmit}>
-                <select
-                    value={chapterId}
-                    onChange={(event) => {
-                        setChapterId(event.target.value);
-                        setSuccessMessage("");
+                return (
+                    <div
+                        key={chapter.id}
+                        style={{
+                            marginBottom: "24px"
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center"
+                            }}
+                        >
+                            <h3>{chapter.title}</h3>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    openCreateForm(chapter.id)
+                                }
+                            >
+                                + Add Lesson
+                            </button>
+                        </div>
+
+                        {chapterLessons.length === 0 ? (
+                            <p>No lessons.</p>
+                        ) : (
+                            <div>
+                                {chapterLessons.map((lesson) => (
+                                    <div
+                                        key={lesson.id}
+                                        style={{
+                                            display: "flex",
+                                            justifyContent:
+                                                "space-between",
+                                            alignItems: "center",
+                                            padding: "12px",
+                                            marginBottom: "8px",
+                                            border:
+                                                "1px solid #d1d5db",
+                                            borderRadius: "6px"
+                                        }}
+                                    >
+                                        <strong>
+                                            {lesson.title}
+                                        </strong>
+
+                                        <div>
+    <button
+        type="button"
+        onClick={() =>
+            openEditForm(lesson)
+        }
+    >
+        Edit
+    </button>
+
+    <button
+        type="button"
+        onClick={() =>
+            handleDeleteLesson(lesson.id)
+        }
+    >
+        Delete
+    </button>
+
+    <button
+    type="button"
+  onClick={async () => {
+    const response = await fetch(
+        "http://localhost:3000/api/lessons"
+    );
+
+    if (!response.ok) {
+        alert("Failed to load lesson content.");
+        return;
+    }
+
+    const latestLessons: Lesson[] =
+        await response.json();
+
+    const latestLesson = latestLessons.find(
+        (item) => item.id === lesson.id
+    );
+
+    if (!latestLesson) {
+        alert("Failed to load lesson content.");
+        return;
+    }
+
+    setLessons(latestLessons);
+    setContentLesson(latestLesson);
+}}
+>
+    Content
+</button>
+</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+
+            {showForm && (
+                <div
+                    style={{
+                        padding: "24px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        background: "#f9fafb"
                     }}
                 >
-                    <option value="">
-                        Select chapter
-                    </option>
+                    <h3>
+                        {editingLessonId !== null
+                            ? "Edit Lesson"
+                            : "Create Lesson"}
+                    </h3>
 
-                    {chapters.map((chapter) => (
-                        <option
-                            key={chapter.id}
-                            value={chapter.id}
-                        >
-                            {chapter.title}
-                        </option>
-                    ))}
-                </select>
+                    <form onSubmit={handleSubmit}>
+                        <div>
+                            <label>
+                                Lesson title
+                            </label>
 
-                <input
-                    type="text"
-                    placeholder="Lesson title"
-                    value={title}
-                    onChange={(event) => {
-                        setTitle(event.target.value);
-                        setSuccessMessage("");
-                    }}
-                />
-
-                <textarea
-                    placeholder="Lesson content"
-                    value={content}
-                    onChange={(event) => {
-                        setContent(event.target.value);
-                        setSuccessMessage("");
-                    }}
-                    rows={8}
-                />
-
-                <button type="submit">
-                    {editingLessonId !== null
-                        ? "Update Lesson"
-                        : "Create Lesson"}
-                </button>
-
-                {editingLessonId !== null && (
-                    <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                    >
-                        Cancel
-                    </button>
-                )}
-            </form>
-
-            <h3>Lessons</h3>
-
-            {lessons.length === 0 ? (
-                <p>No lessons available.</p>
-            ) : (
-                <ul>
-                    {lessons.map((lesson) => {
-                        const chapter = chapters.find(
-                            (item) =>
-                                item.id === lesson.chapter_id
-                        );
-
-                        return (
-                            <li key={lesson.id}>
-                                <strong>
-                                    {lesson.title}
-                                </strong>
-
-                                <span>
-                                    {" "}(
-                                    {chapter
-                                        ? chapter.title
-                                        : "Unknown chapter"}
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(event) =>
+                                    setTitle(
+                                        event.target.value
                                     )
-                                </span>
+                                }
+                                placeholder="Enter lesson title"
+                            />
+                        </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        handleEditLesson(lesson)
-                                    }
-                                >
-                                    Edit
-                                </button>
+                        <div
+                            style={{
+                                marginTop: "16px"
+                            }}
+                        >
+                            <button
+                                type="button"
+                                onClick={closeForm}
+                            >
+                                Cancel
+                            </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        handleDeleteLesson(lesson.id)
-                                    }
-                                >
-                                    Delete
-                                </button>
-                            </li>
-                        );
-                    })}
-                </ul>
+                            <button type="submit">
+                                {editingLessonId !== null
+                                    ? "Update Lesson"
+                                    : "Create Lesson"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             )}
-        </div>
+        </section>
     );
 }
 

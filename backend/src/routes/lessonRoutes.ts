@@ -30,7 +30,7 @@ router.get("/", (_req, res) => {
 router.post("/", (req, res) => {
     const { chapter_id, title, content } = req.body;
 
-    if (!chapter_id || !title || !content) {
+    if (!chapter_id || !title || content === undefined) {
         return res.status(400).json({
             error: "chapter_id, title, and content are required."
         });
@@ -85,11 +85,11 @@ router.put("/:id", (req, res) => {
         });
     }
 
-    if (!chapter_id || !title || !content) {
-        return res.status(400).json({
-            error: "chapter_id, title, and content are required."
-        });
-    }
+   if (!chapter_id || !title || content === undefined) {
+    return res.status(400).json({
+        error: "chapter_id, title, and content are required."
+    });
+}
 
     const result = db
         .prepare(`

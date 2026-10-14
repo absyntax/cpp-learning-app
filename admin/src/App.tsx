@@ -1,18 +1,23 @@
-import ChapterForm from "./ChapterForm";
-import LessonForm from "./LessonForm";
+import { useState } from "react";
+import Sidebar from "./Sidebar";
+import ContentManagement from "./ContentManagement";
 
 function App() {
+    const [activeMenu, setActiveMenu] =
+        useState("Content Management");
+
     return (
         <div>
-            <h1>C++ Learning App Admin</h1>
+            <Sidebar
+                activeMenu={activeMenu}
+                onMenuSelect={setActiveMenu}
+            />
 
-            <h2>Content Management</h2>
-
-            <ChapterForm />
-
-            <hr />
-
-            <LessonForm />
+            <main>
+                {activeMenu === "Content Management" && (
+                    <ContentManagement />
+                )}
+            </main>
         </div>
     );
 }
